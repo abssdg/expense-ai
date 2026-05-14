@@ -1,135 +1,161 @@
-import { useState } from "react";
-import { Transaction } from "./types";
+import {
+  getTransactionsByMonth,
+  Transaction,
+} from "@/services/transactionService";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 
-const MOCK: Transaction[] = [
-  {
-    id: "1",
-    category: "External income",
-    categoryIcon: "💼",
-    note: "Yeahbird proj",
-    date: "2024-08-12",
-    amount: 6_430_000,
-    type: "revenue",
-  },
-  {
-    id: "2",
-    category: "External income",
-    categoryIcon: "💼",
-    note: "Buffalo project",
-    date: "2024-08-12",
-    amount: 6_000_000,
-    type: "revenue",
-  },
-  {
-    id: "3",
-    category: "Supermarket/Market",
-    categoryIcon: "🛒",
-    note: "Buy vegetables",
-    date: "2024-08-12",
-    amount: -40_000,
-    type: "expenditure",
-  },
-  {
-    id: "4",
-    category: "Eat and drink",
-    categoryIcon: "🍴",
-    note: "Beef noodle",
-    date: "2024-08-12",
-    amount: -42_000,
-    type: "expenditure",
-  },
-  {
-    id: "5",
-    category: "House",
-    categoryIcon: "🏠",
-    note: "Rent",
-    date: "2024-08-05",
-    amount: -5_000_000,
-    type: "expenditure",
-  },
-  {
-    id: "6",
-    category: "External income",
-    categoryIcon: "💼",
-    note: "Salary",
-    date: "2024-08-01",
-    amount: 20_000_000,
-    type: "revenue",
-  },
-  {
-    id: "7",
-    category: "Electricity",
-    categoryIcon: "⚡",
-    note: "EVN bill",
-    date: "2024-08-15",
-    amount: -320_000,
-    type: "expenditure",
-  },
-  {
-    id: "8",
-    category: "Shopping",
-    categoryIcon: "🛍",
-    note: "Shopee",
-    date: "2024-08-22",
-    amount: -1_050_000,
-    type: "expenditure",
-  },
-];
+export type CalendarTransaction = {
+  id: string;
+  type: "expenditure" | "revenue";
+  category: string;
+  categoryIcon: string;
+  amount: number;
+  note: string;
+  date: string;
+};
+
+const CATEGORY_ICONS: Record<string, string> = {
+  Salary: "💼",
+  Bonus: "🎁",
+  Investment: "📈",
+  Market: "🛒",
+  "Eat and drink": "🍜",
+  Shopping: "🛍️",
+  Gasoline: "⛽",
+  House: "🏠",
+  Electricity: "💡",
+  "Load phone": "📱",
+  School: "🎓",
+  "Credit card": "💳",
+  Other: "🧾",
+};
+
+function getCategoryIcon(category: string) {
+  return CATEGORY_ICONS[category] || "🧾";
+}
+
+function normalizeTransaction(tx: Transaction): CalendarTransaction {
+  const rawAmount = Number(tx.amount);
+
+  return {
+    id: tx.id,
+    type: tx.type,
+    category: tx.category,
+    categoryIcon: getCategoryIcon(tx.category),
+    amount: tx.type === "revenue" ? rawAmount : -rawAmount,
+    note: tx.note || "",
+    date: tx.date,
+  };
+}
 
 export function useCalendar() {
-  const [month, setMonth] = useState(7);
-  const [year, setYear] = useState(2024);
+  const today = new Date();
+
+  const [month, setMonth] = useState(today.getMonth());
+  const [year, setYear] = useState(today.getFullYear());
+  const [transactions, setTransactions] = useState<CalendarTransaction[]>([]);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const fetchTransactions = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      const result = await getTransactionsByMonth(year, month);
+      const normalized = result.map(normalizeTransaction);
+
+      setTransactions(normalized);
+    } catch (error) {
+      console.log("Fetch calendar transactions error:", error);
+      setTransactions([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [month, year]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchTransactions();
+    }, [fetchTransactions]),
+  );
 
   const prevMonth = () => {
+    setSelectedDay(null);
+
     if (month === 0) {
       setMonth(11);
-      setYear((y) => y - 1);
-    } else setMonth((m) => m - 1);
+      setYear((prev) => prev - 1);
+      return;
+    }
+
+    setMonth((prev) => prev - 1);
   };
 
   const nextMonth = () => {
+    setSelectedDay(null);
+
     if (month === 11) {
       setMonth(0);
-      setYear((y) => y + 1);
-    } else setMonth((m) => m + 1);
+      setYear((prev) => prev + 1);
+      return;
+    }
+
+    setMonth((prev) => prev + 1);
   };
 
-  const txsForMonth = MOCK.filter((t) => {
-    const d = new Date(t.date);
-    return d.getMonth() === month && d.getFullYear() === year;
-  });
+  const daySummaries = useMemo(() => {
+    const summaries: Record<number, number> = {};
 
-  const daySummaries: Record<number, number> = {};
-  txsForMonth.forEach((t) => {
-    const day = new Date(t.date).getDate();
-    daySummaries[day] = (daySummaries[day] ?? 0) + t.amount;
-  });
+    transactions.forEach((tx) => {
+      const txDate = new Date(tx.date);
+      const day = txDate.getDate();
 
-  const totalRevenue = txsForMonth
-    .filter((t) => t.type === "revenue")
-    .reduce((s, t) => s + t.amount, 0);
-  const totalExpenditure = txsForMonth
-    .filter((t) => t.type === "expenditure")
-    .reduce((s, t) => s + t.amount, 0);
+      if (!summaries[day]) {
+        summaries[day] = 0;
+      }
 
-  const selectedTxs = selectedDay
-    ? MOCK.filter(
-        (t) =>
-          new Date(t.date).getDate() === selectedDay &&
-          new Date(t.date).getMonth() === month,
-      )
-    : [];
+      summaries[day] += tx.amount;
+    });
+
+    return summaries;
+  }, [transactions]);
+
+  const totalRevenue = useMemo(() => {
+    return transactions
+      .filter((tx) => tx.amount >= 0)
+      .reduce((sum, tx) => sum + tx.amount, 0);
+  }, [transactions]);
+
+  const totalExpenditure = useMemo(() => {
+    return transactions
+      .filter((tx) => tx.amount < 0)
+      .reduce((sum, tx) => sum + tx.amount, 0);
+  }, [transactions]);
+
+  const selectedTxs = useMemo(() => {
+    if (!selectedDay) return [];
+
+    return transactions.filter((tx) => {
+      const txDate = new Date(tx.date);
+      return txDate.getDate() === selectedDay;
+    });
+  }, [selectedDay, transactions]);
 
   const openDay = (day: number) => {
     setSelectedDay(day);
     setSheetVisible(true);
   };
 
+  const closeSheet = () => {
+    setSheetVisible(false);
+  };
+
   return {
     month,
     year,
+    loading,
     prevMonth,
     nextMonth,
     daySummaries,
@@ -139,6 +165,7 @@ export function useCalendar() {
     selectedTxs,
     sheetVisible,
     openDay,
-    closeSheet: () => setSheetVisible(false),
+    closeSheet,
+    refresh: fetchTransactions,
   };
 }

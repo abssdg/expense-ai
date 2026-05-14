@@ -3,8 +3,8 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 type Props = {
   leftTitle: string;
   rightTitle: string;
-  active: "expenditure" | "revenue";
-  onChange: (value: "expenditure" | "revenue") => void;
+  active: "revenue" | "expenditure";
+  onChange: (value: "revenue" | "expenditure") => void;
 };
 
 export default function SegmentSwitch({
@@ -16,6 +16,15 @@ export default function SegmentSwitch({
   return (
     <View style={styles.container}>
       <TouchableOpacity
+        style={[styles.button, active === "revenue" && styles.activeButton]}
+        onPress={() => onChange("revenue")}
+      >
+        <Text style={[styles.text, active === "revenue" && styles.activeText]}>
+          {leftTitle}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
         style={[styles.button, active === "expenditure" && styles.activeButton]}
         onPress={() => onChange("expenditure")}
       >
@@ -25,30 +34,23 @@ export default function SegmentSwitch({
           {rightTitle}
         </Text>
       </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.button, active === "revenue" && styles.activeButton]}
-        onPress={() => onChange("revenue")}
-      >
-        <Text style={[styles.text, active === "revenue" && styles.activeText]}>
-          {leftTitle}
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    height: 56,
+    backgroundColor: "#eef2f7",
+    borderRadius: 18,
     flexDirection: "row",
-    backgroundColor: "#dce7ff",
-    borderRadius: 16,
-    overflow: "hidden",
+    padding: 5,
   },
 
   button: {
     flex: 1,
-    paddingVertical: 16,
+    borderRadius: 14,
+    justifyContent: "center",
     alignItems: "center",
   },
 
@@ -57,9 +59,9 @@ const styles = StyleSheet.create({
   },
 
   text: {
-    color: "#1f6fff",
+    fontSize: 15,
     fontWeight: "600",
-    fontSize: 16,
+    color: "#777",
   },
 
   activeText: {

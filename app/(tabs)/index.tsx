@@ -5,10 +5,12 @@ import SegmentSwitch from "@/components/ui/segment-switch";
 import TimeField from "@/components/ui/time-field";
 import { categories } from "@/constants/categories";
 import { Colors } from "@/constants/colors";
+import { addTransaction } from "@/services/transactionService";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -20,31 +22,95 @@ import {
 } from "react-native";
 
 type Theme = typeof Colors.light;
+type TransactionType = "expenditure" | "revenue";
+
+function getTodayDate() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 export default function HomeScreen() {
-  const [type, setType] = useState<"expenditure" | "revenue">("expenditure");
-  const [selectedCategory, setSelectedCategory] = useState("Shopping");
-  const [isEditingCategory, setIsEditingCategory] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const router = useRouter();
+
+  const [type, setType] = useState<TransactionType>("expenditure");
+  const [selectedCategory, setSelectedCategory] = useState("Shopping");
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  const [date, setDate] = useState(getTodayDate());
+  const [darkMode, setDarkMode] = useState(false);
+  const [loading, setLoading] = useState(false);
+
   const theme = darkMode ? Colors.dark : Colors.light;
 
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
+  const handleChangeType = (value: TransactionType) => {
+    setType(value);
+
+    const firstCategory = categories[value]?.[0]?.title;
+    if (firstCategory) {
+      setSelectedCategory(firstCategory);
+    }
+  };
+
+  const handleSave = async () => {
+    const parsedAmount = Number(amount.replace(/[,.]/g, ""));
+
+    if (!parsedAmount || parsedAmount <= 0) {
+      Alert.alert("Thiếu số tiền", "Nhập số tiền hợp lệ trước đã bro.");
+      return;
+    }
+
+    if (!selectedCategory) {
+      Alert.alert("Thiếu danh mục", "Chọn category trước khi lưu.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      await addTransaction({
+        type,
+        category: selectedCategory,
+        amount: parsedAmount,
+        note: note.trim(),
+        date,
+      });
+
+      Alert.alert("Thành công");
+
+      setAmount("");
+      setNote("");
+      setDate(getTodayDate());
+
+      const firstCategory = categories[type]?.[0]?.title;
+      if (firstCategory) {
+        setSelectedCategory(firstCategory);
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Không thể lưu giao dịch.";
+
+      Alert.alert("Lỗi Supabase", message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* Header */}
           <View style={styles.headerRow}>
             <View>
-              <Text style={styles.title}>Add Expense</Text>
+              <Text style={styles.title}>
+                {type === "expenditure" ? "Add Expense" : "Add Revenue"}
+              </Text>
 
               <Text style={styles.subtitle}>
                 Track your daily spending easily
@@ -53,7 +119,7 @@ export default function HomeScreen() {
 
             <Pressable
               style={styles.themeButton}
-              onPress={() => setDarkMode(!darkMode)}
+              onPress={() => setDarkMode((prev) => !prev)}
             >
               <Ionicons
                 name={darkMode ? "moon" : "sunny"}
@@ -63,24 +129,32 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-          {/* Type Switch */}
           <SegmentSwitch
             leftTitle="Revenue"
             rightTitle="Expenditure"
             active={type}
-            onChange={setType}
+            onChange={handleChangeType}
           />
 
-          {/* Form */}
           <View style={styles.card}>
-            <TimeField label="Time" value="August 12, 2024" />
+            <TimeField label="Time" value={date} />
 
-            <InputField label="Amount" placeholder="Enter amount" />
+            <InputField
+              label="Amount"
+              placeholder="Enter amount"
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="numeric"
+            />
 
-            <InputField label="Note" placeholder="Enter notes" />
+            <InputField
+              label="Note"
+              placeholder="Enter notes"
+              value={note}
+              onChangeText={setNote}
+            />
           </View>
 
-          {/* Categories */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Category</Text>
           </View>
@@ -100,22 +174,25 @@ export default function HomeScreen() {
               );
             })}
 
-            {/* 👉 EDIT CARD */}
             <CategoryCard
               title="Edit"
-              icon={<Ionicons name="create-outline" size={24} color="#111" />}
-              active={isEditingCategory}
-              onPress={() => {
-                setIsEditingCategory(true);
-                router.push("/modal/editcategory");
-              }}
+              icon={
+                <Ionicons
+                  name="create-outline"
+                  size={24}
+                  color={darkMode ? "#fff" : "#111"}
+                />
+              }
+              active={false}
+              onPress={() => router.push("/modal/editcategory")}
             />
           </View>
 
-          {/* Button */}
           <View style={styles.buttonContainer}>
             <BlueButton
               title={type === "expenditure" ? "Save Expense" : "Save Revenue"}
+              onPress={handleSave}
+              loading={loading}
             />
           </View>
         </ScrollView>
@@ -126,6 +203,10 @@ export default function HomeScreen() {
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
+    flex: {
+      flex: 1,
+    },
+
     container: {
       flex: 1,
       backgroundColor: theme.background,
@@ -164,7 +245,6 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.card,
       justifyContent: "center",
       alignItems: "center",
-
       shadowColor: theme.shadow,
       shadowOffset: {
         width: 0,
@@ -172,7 +252,6 @@ const createStyles = (theme: Theme) =>
       },
       shadowOpacity: 0.1,
       shadowRadius: 6,
-
       elevation: 4,
     },
 
@@ -181,7 +260,6 @@ const createStyles = (theme: Theme) =>
       borderRadius: 24,
       padding: 10,
       marginTop: 24,
-
       shadowColor: theme.shadow,
       shadowOffset: {
         width: 0,
@@ -189,7 +267,6 @@ const createStyles = (theme: Theme) =>
       },
       shadowOpacity: 0.06,
       shadowRadius: 10,
-
       elevation: 4,
     },
 
@@ -203,6 +280,7 @@ const createStyles = (theme: Theme) =>
       fontWeight: "600",
       color: theme.text,
     },
+
     grid: {
       flexDirection: "row",
       flexWrap: "wrap",

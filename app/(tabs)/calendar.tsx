@@ -43,6 +43,7 @@ export default function CalendarScreen() {
   const {
     month,
     year,
+    loading,
     prevMonth,
     nextMonth,
     daySummaries,
