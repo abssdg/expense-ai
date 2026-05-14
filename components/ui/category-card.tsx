@@ -22,12 +22,12 @@ export default function CategoryCard({ title, icon, active, onPress }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    width: "31%",
+    width: "23%",
     backgroundColor: "#fff",
     borderRadius: 16,
     paddingVertical: 20,
     alignItems: "center",
-    marginBottom: 14,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: "transparent",
   },
@@ -38,8 +38,8 @@ const styles = StyleSheet.create({
   },
 
   text: {
-    marginTop: 10,
-    fontSize: 13,
+    marginTop: 5,
+    fontSize: 10,
     fontWeight: "500",
   },
 });

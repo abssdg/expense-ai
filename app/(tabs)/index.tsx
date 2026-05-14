@@ -6,6 +6,7 @@ import TimeField from "@/components/ui/time-field";
 import { categories } from "@/constants/categories";
 import { Colors } from "@/constants/colors";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -21,12 +22,11 @@ import {
 type Theme = typeof Colors.light;
 
 export default function HomeScreen() {
-  const [type, setType] = useState<"left" | "right">("left");
-
+  const [type, setType] = useState<"expenditure" | "revenue">("expenditure");
   const [selectedCategory, setSelectedCategory] = useState("Shopping");
-
+  const [isEditingCategory, setIsEditingCategory] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-
+  const router = useRouter();
   const theme = darkMode ? Colors.dark : Colors.light;
 
   const styles = createStyles(theme);
@@ -65,8 +65,8 @@ export default function HomeScreen() {
 
           {/* Type Switch */}
           <SegmentSwitch
-            leftTitle="Expenditure"
-            rightTitle="Revenue"
+            leftTitle="Revenue"
+            rightTitle="Expenditure"
             active={type}
             onChange={setType}
           />
@@ -86,7 +86,7 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.grid}>
-            {categories.map((item) => {
+            {categories[type].map((item) => {
               const active = selectedCategory === item.title;
 
               return (
@@ -99,12 +99,23 @@ export default function HomeScreen() {
                 />
               );
             })}
+
+            {/* 👉 EDIT CARD */}
+            <CategoryCard
+              title="Edit"
+              icon={<Ionicons name="create-outline" size={24} color="#111" />}
+              active={isEditingCategory}
+              onPress={() => {
+                setIsEditingCategory(true);
+                router.push("/modal/editcategory");
+              }}
+            />
           </View>
 
           {/* Button */}
           <View style={styles.buttonContainer}>
             <BlueButton
-              title={type === "left" ? "Save Expense" : "Save Revenue"}
+              title={type === "expenditure" ? "Save Expense" : "Save Revenue"}
             />
           </View>
         </ScrollView>
@@ -137,6 +148,7 @@ const createStyles = (theme: Theme) =>
       fontSize: 30,
       fontWeight: "700",
       color: theme.text,
+      marginTop: 10,
     },
 
     subtitle: {
@@ -167,7 +179,7 @@ const createStyles = (theme: Theme) =>
     card: {
       backgroundColor: theme.card,
       borderRadius: 24,
-      padding: 18,
+      padding: 10,
       marginTop: 24,
 
       shadowColor: theme.shadow,
@@ -191,12 +203,12 @@ const createStyles = (theme: Theme) =>
       fontWeight: "600",
       color: theme.text,
     },
-
     grid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      justifyContent: "space-between",
-      rowGap: 14,
+      justifyContent: "flex-start",
+      rowGap: 10,
+      columnGap: "2%",
     },
 
     buttonContainer: {
