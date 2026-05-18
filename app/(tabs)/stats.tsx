@@ -10,7 +10,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 const MONTHS = [
@@ -38,6 +38,7 @@ export default function StatsScreen() {
     month,
     year,
     prevPeriod,
+    loading,
     nextPeriod,
     categoryStats,
     monthStats,
@@ -120,8 +121,14 @@ export default function StatsScreen() {
           <View style={styles.divider} />
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Remaining</Text>
-            <Text style={[styles.summaryValue, { color: "#2878f0" }]}>
-              +{fmtVND(remaining)}
+            <Text
+              style={[
+                styles.summaryValue,
+                { color: remaining >= 0 ? "#2878f0" : "#ef4444" },
+              ]}
+            >
+              {remaining >= 0 ? "+" : "-"}
+              {fmtVND(remaining)}
             </Text>
           </View>
         </View>

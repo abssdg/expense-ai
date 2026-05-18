@@ -8,32 +8,14 @@ import { useCallback, useMemo, useState } from "react";
 export type CalendarTransaction = {
   id: string;
   type: "expenditure" | "revenue";
-  category: string;
+  categoryId: string | null;
+  categoryName: string;
   categoryIcon: string;
+  categoryColor: string;
   amount: number;
   note: string;
   date: string;
 };
-
-const CATEGORY_ICONS: Record<string, string> = {
-  Salary: "💼",
-  Bonus: "🎁",
-  Investment: "📈",
-  Market: "🛒",
-  "Eat and drink": "🍜",
-  Shopping: "🛍️",
-  Gasoline: "⛽",
-  House: "🏠",
-  Electricity: "💡",
-  "Load phone": "📱",
-  School: "🎓",
-  "Credit card": "💳",
-  Other: "🧾",
-};
-
-function getCategoryIcon(category: string) {
-  return CATEGORY_ICONS[category] || "🧾";
-}
 
 function normalizeTransaction(tx: Transaction): CalendarTransaction {
   const rawAmount = Number(tx.amount);
@@ -41,12 +23,20 @@ function normalizeTransaction(tx: Transaction): CalendarTransaction {
   return {
     id: tx.id,
     type: tx.type,
-    category: tx.category,
-    categoryIcon: getCategoryIcon(tx.category),
+
+    categoryId: tx.category_id,
+    categoryName: tx.category?.name ?? "Unknown",
+    categoryIcon: tx.category?.icon ?? "🧾",
+    categoryColor: tx.category?.color ?? "#64748b",
+
     amount: tx.type === "revenue" ? rawAmount : -rawAmount,
     note: tx.note || "",
     date: tx.date,
   };
+}
+
+function getDayFromDate(date: string) {
+  return Number(date.slice(8, 10));
 }
 
 export function useCalendar() {
@@ -54,6 +44,7 @@ export function useCalendar() {
 
   const [month, setMonth] = useState(today.getMonth());
   const [year, setYear] = useState(today.getFullYear());
+
   const [transactions, setTransactions] = useState<CalendarTransaction[]>([]);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
@@ -109,8 +100,7 @@ export function useCalendar() {
     const summaries: Record<number, number> = {};
 
     transactions.forEach((tx) => {
-      const txDate = new Date(tx.date);
-      const day = txDate.getDate();
+      const day = getDayFromDate(tx.date);
 
       if (!summaries[day]) {
         summaries[day] = 0;
@@ -138,8 +128,7 @@ export function useCalendar() {
     if (!selectedDay) return [];
 
     return transactions.filter((tx) => {
-      const txDate = new Date(tx.date);
-      return txDate.getDate() === selectedDay;
+      return getDayFromDate(tx.date) === selectedDay;
     });
   }, [selectedDay, transactions]);
 
@@ -156,16 +145,21 @@ export function useCalendar() {
     month,
     year,
     loading,
+
     prevMonth,
     nextMonth,
+
     daySummaries,
     totalRevenue,
     totalExpenditure,
+
     selectedDay,
     selectedTxs,
     sheetVisible,
+
     openDay,
     closeSheet,
+
     refresh: fetchTransactions,
   };
 }

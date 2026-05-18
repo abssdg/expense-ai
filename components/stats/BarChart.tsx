@@ -1,5 +1,5 @@
-import { MonthStat } from "@/constants/stats/types";
-import { StyleSheet, Text, View } from "react-native";
+import { MonthStat } from "@/constants/stats/useStats";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 type Props = {
   data: MonthStat[];
@@ -36,9 +36,13 @@ export function BarChart({ data, tab, selectedMonth, onSelect }: Props) {
           const val =
             tab === "expenditure" ? Math.abs(d.expenditure) : d.revenue;
           const height = Math.max((val / max) * 100, val > 0 ? 4 : 0);
-          const isSelected = d.month === selectedMonth + 1;
+          const isSelected = d.month === selectedMonth;
           return (
-            <View key={i} style={styles.barCol}>
+            <Pressable
+              key={i}
+              style={styles.barCol}
+              onPress={() => onSelect(d.month)}
+            >
               <View style={styles.barTrack}>
                 <View
                   style={[
@@ -54,12 +58,13 @@ export function BarChart({ data, tab, selectedMonth, onSelect }: Props) {
                   ]}
                 />
               </View>
+
               <Text
                 style={[styles.barLabel, isSelected && styles.barLabelActive]}
               >
                 {LABELS[i]}
               </Text>
-            </View>
+            </Pressable>
           );
         })}
       </View>

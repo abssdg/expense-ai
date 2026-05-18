@@ -1,18 +1,23 @@
-import { signInWithEmail, signUpWithEmail } from "@/services/authService";
+import {
+  signInWithEmail,
+  signInWithGoogle,
+  signUpWithEmail,
+} from "@/services/authService";
+import { seedDefaultCategoriesIfNeeded } from "@/services/categoryService";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 export default function LoginScreen() {
@@ -42,10 +47,12 @@ export default function LoginScreen() {
       setLoading(true);
 
       if (isLoginMode) {
-        await signInWithEmail(email, password);
-        router.replace("/(tabs)/profile");
+        await signInWithEmail(email.trim().toLowerCase(), password);
+        await seedDefaultCategoriesIfNeeded();
+        router.replace("/(tabs)");
       } else {
-        await signUpWithEmail(email, password);
+        await signUpWithEmail(email.trim().toLowerCase(), password);
+        setPassword("");
 
         Alert.alert(
           "Đăng ký thành công",
@@ -66,6 +73,25 @@ export default function LoginScreen() {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
+
+      await signInWithGoogle();
+
+      await seedDefaultCategoriesIfNeeded();
+
+      router.replace("/(tabs)");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Không thể đăng nhập Google.";
+
+      Alert.alert("Đăng nhập Google thất bại", message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -79,7 +105,7 @@ export default function LoginScreen() {
 
           <Text style={styles.subtitle}>
             {isLoginMode
-              ? "Đăng nhập để đồng bộ dữ liệu chi tiêu"
+              ? "Đăng nhập để đồng bộ dữ liệu"
               : "Tạo tài khoản để lưu dữ liệu lên cloud"}
           </Text>
 
@@ -130,6 +156,21 @@ export default function LoginScreen() {
             )}
           </Pressable>
 
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <Pressable
+            style={[styles.googleButton, loading && styles.disabledButton]}
+            onPress={handleGoogleLogin}
+            disabled={loading}
+          >
+            <Ionicons name="logo-google" size={18} color="#0F172A" />
+            <Text style={styles.googleButtonText}>Continue with Google</Text>
+          </Pressable>
+
           <Pressable
             style={styles.switchButton}
             onPress={() => setMode(isLoginMode ? "register" : "login")}
@@ -141,14 +182,27 @@ export default function LoginScreen() {
             </Text>
           </Pressable>
 
-          <Pressable style={styles.backButton} onPress={() => router.back()}>
+          {/* <Pressable style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backText}>Quay lại</Text>
-          </Pressable>
+          </Pressable> */}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+
+const COLORS = {
+  primary: "#0EA5E9",
+  primaryDark: "#0284C7",
+  primaryLight: "#E0F2FE",
+  background: "#F0F9FF",
+  card: "#FFFFFF",
+  text: "#0F172A",
+  subText: "#64748B",
+  border: "#BAE6FD",
+  inputBg: "#F8FCFF",
+  white: "#FFFFFF",
+};
 
 const styles = StyleSheet.create({
   flex: {
@@ -158,61 +212,81 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor: "#f4f5f7",
-    paddingHorizontal: 20,
+    backgroundColor: COLORS.background,
+    paddingHorizontal: 22,
   },
 
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: "#000",
+    backgroundColor: COLORS.card,
+    borderRadius: 28,
+    padding: 24,
+
+    borderWidth: 1,
+    borderColor: COLORS.border,
+
+    shadowColor: COLORS.primary,
     shadowOffset: {
       width: 0,
-      height: 6,
+      height: 14,
     },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
+    shadowOpacity: 0.16,
+    shadowRadius: 24,
+    elevation: 8,
   },
 
   title: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#111",
+    fontSize: 30,
+    fontWeight: "900",
+    color: COLORS.text,
+    letterSpacing: -0.5,
   },
 
   subtitle: {
-    marginTop: 6,
-    marginBottom: 22,
-    fontSize: 13,
-    color: "#888",
+    marginTop: 8,
+    marginBottom: 26,
+    fontSize: 14,
+    lineHeight: 20,
+    color: COLORS.subText,
+    fontWeight: "500",
   },
 
   inputBox: {
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: "#f4f6fb",
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: COLORS.inputBg,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    marginBottom: 12,
+    paddingHorizontal: 16,
+    marginBottom: 14,
     gap: 10,
+
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
 
   input: {
     flex: 1,
-    fontSize: 14,
-    color: "#111",
+    fontSize: 15,
+    color: COLORS.text,
+    fontWeight: "500",
   },
 
   mainButton: {
-    height: 50,
-    borderRadius: 14,
-    backgroundColor: "#1677ff",
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: COLORS.primary,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 10,
+
+    shadowColor: COLORS.primary,
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.28,
+    shadowRadius: 16,
+    elevation: 5,
   },
 
   disabledButton: {
@@ -220,29 +294,70 @@ const styles = StyleSheet.create({
   },
 
   mainButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "700",
+    color: COLORS.white,
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 0.2,
   },
 
   switchButton: {
     alignItems: "center",
-    marginTop: 16,
+    marginTop: 18,
+    paddingVertical: 4,
   },
 
   switchText: {
     fontSize: 13,
-    fontWeight: "600",
-    color: "#1677ff",
+    fontWeight: "700",
+    color: COLORS.primaryDark,
   },
 
   backButton: {
     alignItems: "center",
     marginTop: 14,
+    paddingVertical: 4,
   },
 
   backText: {
     fontSize: 13,
-    color: "#999",
+    fontWeight: "600",
+    color: COLORS.subText,
+  },
+
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 18,
+  },
+
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#BAE6FD",
+  },
+
+  dividerText: {
+    marginHorizontal: 10,
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#64748B",
+  },
+
+  googleButton: {
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#BAE6FD",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+
+  googleButtonText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#0F172A",
   },
 });

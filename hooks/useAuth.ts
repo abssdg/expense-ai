@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { seedDefaultCategoriesIfNeeded } from "@/services/categoryService";
 import { Session, User } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
 
@@ -10,20 +11,33 @@ export function useAuth() {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
+    const handleSession = async (currentSession: Session | null) => {
       if (!mounted) return;
 
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      setLoadingAuth(false);
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+
+      if (currentSession?.user) {
+        try {
+          await seedDefaultCategoriesIfNeeded();
+        } catch (error) {
+          console.log("Seed default categories error:", error);
+        }
+      }
+
+      if (mounted) {
+        setLoadingAuth(false);
+      }
+    };
+
+    supabase.auth.getSession().then(({ data }) => {
+      handleSession(data.session);
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, currentSession) => {
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      setLoadingAuth(false);
+      handleSession(currentSession);
     });
 
     return () => {

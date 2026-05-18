@@ -107,13 +107,19 @@ export default function CalendarScreen() {
 
         {/* Calendar card */}
         <View style={styles.calendarCard}>
-          <CalendarGrid
-            month={month}
-            year={year}
-            selectedDate={selectedDay}
-            daySummaries={daySummaries}
-            onSelectDate={openDay}
-          />
+          {loading ? (
+            <View style={styles.loadingBox}>
+              <Text style={styles.loadingText}>Đang tải lịch...</Text>
+            </View>
+          ) : (
+            <CalendarGrid
+              month={month}
+              year={year}
+              selectedDate={selectedDay}
+              daySummaries={daySummaries}
+              onSelectDate={openDay}
+            />
+          )}
         </View>
       </ScrollView>
 
@@ -127,13 +133,7 @@ export default function CalendarScreen() {
           <View style={styles.sheetHandle} />
 
           <View style={styles.sheetHeader}>
-            <Pressable
-              onPress={() => {}}
-              hitSlop={8}
-              style={styles.sheetAddBtn}
-            >
-              <Ionicons name="add" size={20} color="#2878f0" />
-            </Pressable>
+            <View style={styles.sheetAddBtn} />
             <Text style={styles.sheetTitle}>{dayLabel}</Text>
             <Pressable
               onPress={closeSheet}
@@ -160,14 +160,14 @@ export default function CalendarScreen() {
                   style={[
                     styles.txIcon,
                     {
-                      backgroundColor: item.amount >= 0 ? "#dcfce7" : "#fee2e2",
+                      backgroundColor: `${item.categoryColor}22`,
                     },
                   ]}
                 >
                   <Text style={{ fontSize: 18 }}>{item.categoryIcon}</Text>
                 </View>
                 <View style={styles.txInfo}>
-                  <Text style={styles.txCategory}>{item.category}</Text>
+                  <Text style={styles.txCategory}>{item.categoryName}</Text>
                   <Text style={styles.txNote}>{item.note}</Text>
                 </View>
                 <View style={styles.txRight}>
@@ -328,4 +328,16 @@ const styles = StyleSheet.create({
   txRight: { alignItems: "flex-end" },
   txAmount: { fontSize: 13, fontWeight: "700" },
   txCurrency: { fontSize: 10, color: "#aaa" },
+
+  loadingBox: {
+    paddingVertical: 30,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  loadingText: {
+    fontSize: 13,
+    color: "#999",
+    fontWeight: "600",
+  },
 });

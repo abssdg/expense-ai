@@ -1,4 +1,4 @@
-import { CategoryStat } from "@/constants/stats/types";
+import { CategoryStat } from "@/constants/stats/useStats";
 import { StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, G } from "react-native-svg";
 

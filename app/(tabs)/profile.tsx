@@ -37,7 +37,8 @@ const defaultSettings: ProfileSettings = {
 export default function IndividualScreen() {
   const router = useRouter();
   const { user, isLogin, loadingAuth } = useAuth();
-
+  const displayName =
+    user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
   const [loggingOut, setLoggingOut] = useState(false);
   const [settings, setSettings] = useState<ProfileSettings>(defaultSettings);
 
@@ -111,8 +112,10 @@ export default function IndividualScreen() {
         onPress: async () => {
           try {
             setLoggingOut(true);
+
             await signOut();
-            Alert.alert("Đã đăng xuất", "Tài khoản đã được đăng xuất.");
+
+            router.replace("/auth/login");
           } catch (error) {
             const message =
               error instanceof Error ? error.message : "Không thể đăng xuất.";
@@ -146,9 +149,7 @@ export default function IndividualScreen() {
         />
 
         <View style={styles.userInfo}>
-          <Text style={styles.name}>
-            {isLogin ? "Kittens saving" : "Guest"}
-          </Text>
+          <Text style={styles.name}>{isLogin ? displayName : "Guest"}</Text>
           <Text style={styles.email} numberOfLines={1}>
             {isLogin ? user?.email : "---"}
           </Text>

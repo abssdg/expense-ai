@@ -1,8 +1,8 @@
 import {
-    getTransactionsByMonth,
-    getTransactionsByYear,
-    Transaction,
-    TransactionType,
+  getTransactionsByMonth,
+  getTransactionsByYear,
+  Transaction,
+  TransactionType,
 } from "@/services/transactionService";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
@@ -12,6 +12,7 @@ export type StatsTab = "expenditure" | "revenue";
 
 export type CategoryStat = {
   id: string;
+  categoryId: string | null;
   name: string;
   icon: string;
   amount: number;
@@ -23,27 +24,10 @@ export type CategoryStat = {
 
 export type MonthStat = {
   id: string;
-  month: number;
+  month: number; // 0-11
   label: string;
   revenue: number;
   expenditure: number;
-};
-
-const CATEGORY_META: Record<string, { icon: string; color: string }> = {
-  Salary: { icon: "💼", color: "#16a34a" },
-  Bonus: { icon: "🎁", color: "#22c55e" },
-  Investment: { icon: "📈", color: "#0ea5e9" },
-
-  Market: { icon: "🛒", color: "#f97316" },
-  "Eat and drink": { icon: "🍜", color: "#ef4444" },
-  Shopping: { icon: "🛍️", color: "#a855f7" },
-  Gasoline: { icon: "⛽", color: "#eab308" },
-  House: { icon: "🏠", color: "#2878f0" },
-  Electricity: { icon: "💡", color: "#f59e0b" },
-  "Load phone": { icon: "📱", color: "#06b6d4" },
-  School: { icon: "🎓", color: "#6366f1" },
-  "Credit card": { icon: "💳", color: "#ec4899" },
-  Other: { icon: "🧾", color: "#64748b" },
 };
 
 const MONTH_LABELS = [
@@ -61,14 +45,14 @@ const MONTH_LABELS = [
   "Dec",
 ];
 
-function getCategoryMeta(category: string) {
-  return CATEGORY_META[category] || CATEGORY_META.Other;
-}
-
 function getTotalByType(transactions: Transaction[], type: TransactionType) {
   return transactions
     .filter((item) => item.type === type)
     .reduce((sum, item) => sum + Number(item.amount), 0);
+}
+
+function getMonthFromDate(date: string) {
+  return Number(date.slice(5, 7)) - 1;
 }
 
 function buildCategoryStats(
@@ -85,19 +69,26 @@ function buildCategoryStats(
 
   filtered.forEach((item) => {
     const amount = Number(item.amount);
-    const meta = getCategoryMeta(item.category);
 
-    const old = map.get(item.category);
+    const categoryId = item.category_id;
+    const categoryName = item.category?.name ?? "Unknown";
+    const categoryIcon = item.category?.icon ?? "🧾";
+    const categoryColor = item.category?.color ?? "#64748b";
+
+    const key = categoryId ?? `unknown-${categoryName}`;
+
+    const old = map.get(key);
 
     if (old) {
       old.amount += amount;
       old.transactions.push(item);
     } else {
-      map.set(item.category, {
-        id: item.category,
-        name: item.category,
-        icon: meta.icon,
-        color: meta.color,
+      map.set(key, {
+        id: key,
+        categoryId,
+        name: categoryName,
+        icon: categoryIcon,
+        color: categoryColor,
         amount,
         percentage: 0,
         type: item.type,
@@ -124,9 +115,10 @@ function buildMonthStats(transactions: Transaction[]): MonthStat[] {
   }));
 
   transactions.forEach((item) => {
-    const date = new Date(item.date);
-    const month = date.getMonth();
+    const month = getMonthFromDate(item.date);
     const amount = Number(item.amount);
+
+    if (month < 0 || month > 11) return;
 
     if (item.type === "revenue") {
       months[month].revenue += amount;
@@ -143,12 +135,15 @@ export function useStats() {
 
   const [period, setPeriod] = useState<StatsPeriod>("month");
   const [tab, setTab] = useState<StatsTab>("expenditure");
+
   const [month, setMonth] = useState(today.getMonth());
   const [year, setYear] = useState(today.getFullYear());
+
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [detailCategory, setDetailCategory] = useState<CategoryStat | null>(
     null,
   );
+
   const [loading, setLoading] = useState(false);
 
   const fetchStats = useCallback(async () => {
@@ -195,6 +190,16 @@ export function useStats() {
     return buildMonthStats(transactions);
   }, [transactions]);
 
+  const handleSetPeriod = (nextPeriod: StatsPeriod) => {
+    setPeriod(nextPeriod);
+    setDetailCategory(null);
+  };
+
+  const handleSetTab = (nextTab: StatsTab) => {
+    setTab(nextTab);
+    setDetailCategory(null);
+  };
+
   const prevPeriod = () => {
     setDetailCategory(null);
 
@@ -231,9 +236,10 @@ export function useStats() {
 
   return {
     period,
-    setPeriod,
+    setPeriod: handleSetPeriod,
+
     tab,
-    setTab,
+    setTab: handleSetTab,
 
     month,
     year,
